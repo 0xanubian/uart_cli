@@ -1,0 +1,7 @@
+rm -rf Debug/
+cmake --preset Debug
+cmake --build --preset Debug
+
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg   -c "program Debug/uart_cli.elf verify reset exit"
+
+picocom -b 115200 /dev/ttyUSB0

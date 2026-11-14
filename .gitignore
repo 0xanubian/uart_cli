@@ -1,0 +1,30 @@
+# --- Build output ---
+Debug/
+Release/
+build/
+cmake-build-*/
+
+# Stray artifacts if built elsewhere
+*.o
+*.d
+*.elf
+*.map
+*.bin
+*.hex
+*.lst
+*.su
+
+# --- Generated tooling files ---
+compile_commands.json
+.cache/
+
+# --- Per-machine CMake presets ---
+CMakeUserPresets.json
+
+# --- STM32CubeIDE leftovers ---
+.metadata/
+.settings/
+.cproject
+.project
+
+vendor/
