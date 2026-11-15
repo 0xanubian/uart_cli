@@ -69,6 +69,7 @@ void uart_init() {
 void USART1_IRQHandler() {
     uint32_t sr = USART1->SR;
 
+    // receive handler
     if (sr & (USART_SR_RXNE | USART_SR_ORE)) {
         uint8_t data = USART1->DR;
         uint32_t nxt_head = (rx_head + 1u) & MAX_SIZE_MSK;
@@ -79,6 +80,7 @@ void USART1_IRQHandler() {
         }
     }
 
+    // transmit handler
     if ((sr & USART_SR_TXE) && (USART1->CR1 & USART_CR1_TXEIE)) {
         if (tx_tail != tx_head) {
             USART1->DR = tx_ring_buf[tx_tail];
@@ -108,27 +110,43 @@ void uart_puts(char *str) {
     }
 }
 
-void uart_gets(char line[]) {
+int uart_gets(char line[]) {
+    static uint32_t idx = 0;
+    static char prev = 0;
+
     while (rx_tail != rx_head) {
         char ch = rx_ring_buf[rx_tail];
         rx_tail = (rx_tail + 1u) & MAX_SIZE_MSK;
 
-        uart_putc(ch);
-        
         if (ch == '\r' || ch == '\n') {
+            if (ch == '\n' && prev == '\r') {
+                prev = ch;
+                continue;
+            }
+
+            prev = ch;
             uart_puts("\r\n");
-            break;
+            line[idx] = '\0';
+            idx = 0;
+            return 1;
+        }
+
+        prev = ch;
+
+        if (ch == '\b' || ch == 0x7f) {
+            if (idx > 0) {
+                idx--;
+                uart_puts("\b \b");
+            }
+            continue;
+        }
+
+        if (idx < MAX_SIZE - 1) {
+            line[idx++] = ch;
+            uart_putc(ch);
         }
     }
-
-    // copy the data from ring buf ro the line buf
-    uint32_t i = rx_tail;
-    uint32_t idx = 0;
-    while (i != rx_head) {
-        line[idx++] = rx_ring_buf[i];
-        i = (i + 1u) & MAX_SIZE_MSK;
-    }
-    line[i] = '\0';
+    return 0;
 }
 
 int main(void)
@@ -142,10 +160,11 @@ int main(void)
     /* Loop forever */
     uart_puts(msg);
 	while (1) {
-        uart_gets(line);
-        uart_puts("received: ");
-        uart_puts(line);
-        uart_puts("\r\n");
+        if (uart_gets(line)) {
+            uart_puts("received: ");
+            uart_puts(line);
+            uart_puts("\r\n");
+        }
     }
     return 0;
 }
