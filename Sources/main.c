@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 #include "stm32f4xx.h"
 
 #define MAX_SIZE 128
@@ -9,6 +10,101 @@ struct command {
     uint32_t argc;
     char *argv[MAX_ARGC];
 };
+
+typedef int (*cmd_handler_t)(int argc, char *argv[]);
+
+struct cmd_entry {
+    const char *name;
+    const char *help_msg;
+    cmd_handler_t handler;
+};
+
+void uart_puts(const char *str);
+
+extern const struct cmd_entry handler_table[];
+extern const uint16_t NUM_CMDS;
+
+int help_handler(int argc, char *argv[]) {
+    for (int i = 0; i < NUM_CMDS; i++) {
+        uart_puts(handler_table[i].name);
+        uart_puts(" : ");
+        uart_puts(handler_table[i].help_msg);
+        uart_puts("\r\n");
+    }
+
+    return 0;
+}
+
+int led_handler(int argc, char *argv[]) {
+    if (argc < 2 || argc > 2) {
+        uart_puts("too many or too few arguments. USAGE: led on or led off");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "on") == 0) {
+        GPIOC->BSRR = GPIO_BSRR_BR13;
+        return 0;
+    }
+
+    else if (strcmp(argv[1], "off") == 0) {
+        GPIOC->BSRR = GPIO_BSRR_BS13;
+        return 0;
+    }
+    
+    else if (strcmp(argv[1], "status") == 0) {
+        uint32_t status = GPIOC->ODR & GPIO_ODR_OD13_Msk;
+        if (status) uart_puts("led is turned off\r\n");
+        else uart_puts("led is turned on\r\n");
+        return 0;
+    }
+
+    else {
+        uart_puts("invalid command\r\n");
+        return 1;
+    }
+}
+
+int echo_handler(int argc, char *argv[]) {
+    if (argc > 2) {
+        uart_puts("you can only echo one string at a time\r\n");
+        return 1;
+    }
+
+    if (argc < 2) {
+        uart_puts("please enter a string to echo\r\n");
+        return 1;
+    }
+
+    uart_puts(argv[1]);
+    uart_puts("\r\n");
+    return 0;
+}
+
+int btn_handler(int argc, char *argv[]) {
+    uart_puts("sorry... to be implemented\r\n");
+    return 0;
+}
+
+int uptime_handler(int argc, char *argv[]) {
+    uart_puts("sorry... to be implemented\r\n");
+    return 0;
+}
+
+int adc_handler(int argc, char *argv[]) {
+    uart_puts("sorry... to be implemented\r\n");
+    return 0;
+}
+
+const struct cmd_entry handler_table[] = {
+    {"help", "print the help message", help_handler},
+    {"led", "turn the internal led on or off", led_handler},
+    {"echo", "echo or print a line", echo_handler},
+    {"EXTI_btn_pressed", "press the button on the breadtboard to increase its counter", btn_handler},
+    {"uptime", "prints the time since which the program has been running", uptime_handler},
+    {"adc", "does something with adc.... to be implemented", adc_handler},
+};
+
+const uint16_t NUM_CMDS = sizeof(handler_table)/sizeof(handler_table[0]);
 
 char rx_ring_buf[MAX_SIZE];
 volatile uint32_t rx_head = 0;     // write pointer
@@ -109,7 +205,7 @@ void uart_putc(char ch) {
     }
 }
 
-void uart_puts(char *str) {
+void uart_puts(const char *str) {
     while (*str) {
         uart_putc(*str);
         str++;
@@ -191,10 +287,18 @@ void dbg_print_args(struct command cmd) {
     }
 }
 
+void led_init() {
+    RCC->AHB1ENR = RCC_AHB1ENR_GPIOCEN;
+
+    GPIOC->MODER &= ~GPIO_MODER_MODER13_Msk;
+    GPIOC->MODER |= (1 << GPIO_MODER_MODER13_Pos);
+}
+
 int main(void)
 {
     clock_init();
     uart_init();
+    led_init();
 
     char line[MAX_SIZE];
     char *msg = "uart working. type your message:\r\n";

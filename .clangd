@@ -1,4 +1,5 @@
 CompileFlags:
   CompilationDatabase: Debug
-  Add: [--target=arm-none-eabi]
+  Add:
+    - -isystem/usr/lib/arm-none-eabi/include
   Remove: [--specs=*, -mfpu=*, -mfloat-abi=*]
