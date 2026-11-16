@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include "stm32f4xx.h"
 
 #define MAX_SIZE 128
@@ -66,12 +67,12 @@ int led_handler(int argc, char *argv[]) {
 
 int echo_handler(int argc, char *argv[]) {
     if (argc > 2) {
-        uart_puts("you can only echo one string at a time\r\n");
+        uart_puts("you can only echo one word at a time\r\n");
         return 1;
     }
 
     if (argc < 2) {
-        uart_puts("please enter a string to echo\r\n");
+        uart_puts("please enter a word to echo\r\n");
         return 1;
     }
 
@@ -98,7 +99,7 @@ int adc_handler(int argc, char *argv[]) {
 const struct cmd_entry handler_table[] = {
     {"help", "print the help message", help_handler},
     {"led", "turn the internal led on or off", led_handler},
-    {"echo", "echo or print a line", echo_handler},
+    {"echo", "echo or print a word", echo_handler},
     {"EXTI_btn_pressed", "press the button on the breadtboard to increase its counter", btn_handler},
     {"uptime", "prints the time since which the program has been running", uptime_handler},
     {"adc", "does something with adc.... to be implemented", adc_handler},
@@ -197,12 +198,12 @@ void USART1_IRQHandler() {
 void uart_putc(char ch) {
     uint32_t nxt_head = (tx_head + 1u) & MAX_SIZE_MSK;
     
-    if (nxt_head != tx_tail) {
-        tx_ring_buf[tx_head] = ch;
-        tx_head = nxt_head;
+    while (nxt_head == tx_tail) {} // ring is full so wait 
 
-        USART1->CR1 |= USART_CR1_TXEIE;
-    }
+    tx_ring_buf[tx_head] = ch;
+    tx_head = nxt_head;
+
+    USART1->CR1 |= USART_CR1_TXEIE;
 }
 
 void uart_puts(const char *str) {
@@ -253,23 +254,25 @@ int uart_gets(char line[]) {
 
 int tokenize(char *line, struct command *cmd) {
     uint32_t argc = 0;
-    char prev = 0;
+    char in_token_flag = 0;
 
     cmd->argv[argc] = line;
 
     while (*line) {
         if (argc > MAX_ARGC) return 0;
 
-        if (*line == ' ') {
-            *line = '\0';
-            argc++;
+        if (*line == ' ' || *line == '\t') {
+            if (in_token_flag) {
+                *line = '\0';
+                in_token_flag = 0;
+            }
         }
 
-        else if ((*line != '\0') && (prev == '\0')) {
-            cmd->argv[argc] = line;
+        else if (!in_token_flag) {
+            cmd->argv[argc++] = line;
+            in_token_flag = 1;
         }
 
-        prev = *line;
         line++;
     }
 
@@ -280,18 +283,39 @@ int tokenize(char *line, struct command *cmd) {
 
 void dbg_print_args(struct command cmd) {
     int i = 0;
-    while (i <= cmd.argc) {
+    
+    while (i < cmd.argc) {
         uart_puts(cmd.argv[i]);
         uart_puts("\r\n");
         i++;
     }
+
+    char b[8];
+    itoa(cmd.argc, b, 10);
+    uart_puts(b);
 }
 
 void led_init() {
-    RCC->AHB1ENR = RCC_AHB1ENR_GPIOCEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
 
     GPIOC->MODER &= ~GPIO_MODER_MODER13_Msk;
     GPIOC->MODER |= (1 << GPIO_MODER_MODER13_Pos);
+}
+
+void command_dispatch(struct command cmd) {
+    if (cmd.argc == 0) {
+        uart_puts("too few arguments... type help for more info\r\n");
+        return;
+    }
+    for (int i = 0; i < NUM_CMDS; i++) {
+        if (strcmp(cmd.argv[0], handler_table[i].name) == 0) {
+            handler_table[i].handler(cmd.argc, cmd.argv);
+            return;
+        } 
+    }
+
+    uart_puts("Invalid command... type help for more info\r\n");
+    return;
 }
 
 int main(void)
@@ -301,10 +325,11 @@ int main(void)
     led_init();
 
     char line[MAX_SIZE];
-    char *msg = "uart working. type your message:\r\n";
+    char *msg = "uart cli.... enter your command\r\n";
 
     /* Loop forever */
     uart_puts(msg);
+    uart_puts("-> ");
 	while (1) {
         if (uart_gets(line)) {
             struct command cmd;
@@ -312,8 +337,11 @@ int main(void)
                 uart_puts("Max args exceeded. only 6 args are permitted\r\n");
                 continue;
             }
-            uart_puts("received:\r\n");
-            dbg_print_args(cmd);
+
+            //dbg_print_args(cmd);
+
+            command_dispatch(cmd);
+            uart_puts("-> ");
         }
     }
     return 0;
