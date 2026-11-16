@@ -3,6 +3,12 @@
 
 #define MAX_SIZE 128
 #define MAX_SIZE_MSK (MAX_SIZE - 1)
+#define MAX_ARGC 6
+
+struct command {
+    uint32_t argc;
+    char *argv[MAX_ARGC];
+};
 
 char rx_ring_buf[MAX_SIZE];
 volatile uint32_t rx_head = 0;     // write pointer
@@ -42,7 +48,7 @@ static void clock_init(void)
     SystemCoreClock = 84000000u;
 }
 
-void uart_init() {
+static void uart_init() {
     // enable rcc clock signal for uart1 and GPIOA
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
@@ -92,7 +98,7 @@ void USART1_IRQHandler() {
     }
 }
 
-static inline void uart_putc(char ch) {
+void uart_putc(char ch) {
     uint32_t nxt_head = (tx_head + 1u) & MAX_SIZE_MSK;
     
     if (nxt_head != tx_tail) {
@@ -149,6 +155,42 @@ int uart_gets(char line[]) {
     return 0;
 }
 
+int tokenize(char *line, struct command *cmd) {
+    uint32_t argc = 0;
+    char prev = 0;
+
+    cmd->argv[argc] = line;
+
+    while (*line) {
+        if (argc > MAX_ARGC) return 0;
+
+        if (*line == ' ') {
+            *line = '\0';
+            argc++;
+        }
+
+        else if ((*line != '\0') && (prev == '\0')) {
+            cmd->argv[argc] = line;
+        }
+
+        prev = *line;
+        line++;
+    }
+
+    cmd->argc = argc;
+
+    return 1;
+}
+
+void dbg_print_args(struct command cmd) {
+    int i = 0;
+    while (i <= cmd.argc) {
+        uart_puts(cmd.argv[i]);
+        uart_puts("\r\n");
+        i++;
+    }
+}
+
 int main(void)
 {
     clock_init();
@@ -161,9 +203,13 @@ int main(void)
     uart_puts(msg);
 	while (1) {
         if (uart_gets(line)) {
-            uart_puts("received: ");
-            uart_puts(line);
-            uart_puts("\r\n");
+            struct command cmd;
+            if (!tokenize(line, &cmd)) {
+                uart_puts("Max args exceeded. only 6 args are permitted\r\n");
+                continue;
+            }
+            uart_puts("received:\r\n");
+            dbg_print_args(cmd);
         }
     }
     return 0;
