@@ -54,6 +54,9 @@ set (PROJECT_SOURCES
 	Sources/sysmem.c
     Sources/system_stm32f4xx.c
 
+    Sources/uart.c
+    Sources/command.c
+    Sources/init.c
 	)
 
 set (PROJECT_DEFINES
@@ -64,6 +67,7 @@ set (PROJECT_DEFINES
 
 set (PROJECT_INCLUDES
 	# LIST INCLUDE DIRECTORIES HERE
+    Include/
     vendor/cmsis_device_f4/Include
     vendor/cmsis_core/CMSIS/Core/Include/
     )
