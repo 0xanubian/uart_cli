@@ -1,12 +1,14 @@
 #include "stm32f4xx.h"
 #include "uart.h"
-#include "command.h"
+#include "exti.h"
 #include "init.h"
+#include "command.h"
 
 int main(void)
 {
     clock_init();
     uart_init();
+    exti_init();
     led_init();
 
     char line[MAX_SIZE];

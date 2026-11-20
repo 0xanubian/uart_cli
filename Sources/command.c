@@ -3,13 +3,14 @@
 #include "stm32f4xx.h"
 #include "command.h"
 #include "uart.h"
+#include "exti.h"
 
 // table for command dispatch and iteration
 const struct cmd_entry handler_table[] = {
     {"help", "print the help message", help_handler},
     {"led", "turn the internal led on or off", led_handler},
     {"echo", "echo or print a word", echo_handler},
-    {"EXTI_btn_pressed", "press the button on the breadtboard to increase its counter", btn_handler},
+    {"btnc", "press the button on the breadtboard to increase its counter", btn_handler},
     {"uptime", "prints the time since which the program has been running", uptime_handler},
     {"adc", "does something with adc.... to be implemented", adc_handler},
 };
@@ -84,7 +85,9 @@ int echo_handler(int argc, char *argv[]) {
 
 // handler for EXTI_btn
 int btn_handler(int argc, char *argv[]) {
-    uart_puts("sorry... to be implemented\r\n");
+    uart_puts("Button pressed counter: ");
+    uart_puts(buf);
+    uart_puts("\r\n");
     return 0;
 }
 

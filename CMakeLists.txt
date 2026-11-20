@@ -57,6 +57,7 @@ set (PROJECT_SOURCES
     Sources/uart.c
     Sources/command.c
     Sources/init.c
+    Sources/exti.c
 	)
 
 set (PROJECT_DEFINES
