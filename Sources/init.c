@@ -41,3 +41,4 @@ void led_init() {
     GPIOC->MODER &= ~GPIO_MODER_MODER13_Msk;
     GPIOC->MODER |= (1 << GPIO_MODER_MODER13_Pos);
 }
+

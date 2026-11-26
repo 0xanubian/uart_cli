@@ -1,12 +1,14 @@
 #include "stm32f4xx.h"
+#include "command.h"
+#include "systick.h"
 #include "uart.h"
 #include "exti.h"
 #include "init.h"
-#include "command.h"
 
 int main(void)
 {
     clock_init();
+    systick_init();
     uart_init();
     exti_init();
     led_init();

@@ -58,6 +58,7 @@ set (PROJECT_SOURCES
     Sources/command.c
     Sources/init.c
     Sources/exti.c
+    Sources/systick.c
 	)
 
 set (PROJECT_DEFINES

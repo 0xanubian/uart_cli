@@ -34,7 +34,7 @@ void exti_init() {
     EXTI->IMR |= EXTI_IMR_IM0;
 
     /* set the priority for the interrupt */
-    NVIC_SetPriority(EXTI0_IRQn, 2);
+    NVIC_SetPriority(EXTI0_IRQn, 3);
     NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
@@ -46,6 +46,6 @@ void EXTI0_IRQHandler() {
         utoa(btn_pressed_counter, buf, 10);
         uart_puts("EXTI button pressed... button pressed counter: ");
         uart_puts(buf);
-        uart_puts("\r\n");
+        uart_puts("\r\n->");
     }
 }

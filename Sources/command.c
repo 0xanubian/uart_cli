@@ -1,6 +1,9 @@
+#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "stm32f4xx.h"
+#include "systick.h"
 #include "command.h"
 #include "uart.h"
 #include "exti.h"
@@ -10,7 +13,7 @@ const struct cmd_entry handler_table[] = {
     {"help", "print the help message", help_handler},
     {"led", "turn the internal led on or off", led_handler},
     {"echo", "echo or print a word", echo_handler},
-    {"btnc", "press the button on the breadtboard to increase its counter", btn_handler},
+    {"btnc", "prints the button pressed counter. Press the button on the breadboard to increase its counter", btn_handler},
     {"uptime", "prints the time since which the program has been running", uptime_handler},
     {"adc", "does something with adc.... to be implemented", adc_handler},
 };
@@ -93,7 +96,16 @@ int btn_handler(int argc, char *argv[]) {
 
 // handler for uptime command
 int uptime_handler(int argc, char *argv[]) {
-    uart_puts("sorry... to be implemented\r\n");
+    char uptime_buf[32];
+
+    uint32_t secs = time_ms / 1000;
+    uint32_t ms = time_ms % 1000;
+
+    snprintf(uptime_buf, sizeof(uptime_buf), "%ld.%03ld", secs, ms);
+
+    uart_puts("MCU has been running for ");
+    uart_puts(uptime_buf);
+    uart_puts(" seconds\r\n");
     return 0;
 }
 
